@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>Socket</title>
+<meta name="description" content="socket.cz"/>
+<link rel="icon" href="socket.png"/>
+<style>
+  :root{
+    --bh: min(42vmin, 440px);        /* event horizon diameter */
+    --fade: 1100ms;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+
+  html,body{height:100%;overflow:hidden}
+
+  body{
+    background:#fff;
+    display:grid;
+    place-items:center;
+    font:400 14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    transition:background-color var(--fade) ease;
+    -webkit-tap-highlight-color:transparent;
+  }
+  body.void{background:#000}
+
+  /* ---------- socket ---------- */
+
+  #socket{
+    position:relative;
+    z-index:10;
+    display:block;
+    border:0;
+    padding:0;
+    background:none;
+    cursor:pointer;
+    width:min(60vmin,600px);
+    transition:opacity var(--fade) ease, transform var(--fade) cubic-bezier(.4,0,.2,1), filter var(--fade) ease;
+  }
+  #socket img{width:100%;height:auto;display:block;user-select:none;-webkit-user-drag:none}
+  #socket:focus-visible{outline:2px solid #0a84ff;outline-offset:12px;border-radius:4px}
+  @media (hover:hover){
+    #socket:hover{transform:scale(1.015)}
+  }
+
+  body.void #socket{
+    opacity:0;
+    transform:scale(.55);
+    filter:blur(14px);
+    pointer-events:none;
+  }
+
+  /* ---------- space ---------- */
+
+  #space{
+    position:fixed;
+    inset:0;
+    z-index:1;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity var(--fade) ease;
+    background:
+      radial-gradient(ellipse 80% 55% at 18% 12%, rgba(42,24,88,.55), transparent 60%),
+      radial-gradient(ellipse 70% 50% at 85% 80%, rgba(12,48,96,.45), transparent 62%),
+      radial-gradient(ellipse 60% 60% at 60% 25%, rgba(80,20,60,.22), transparent 70%),
+      #000;
+  }
+  body.void #space{opacity:1}
+
+  /* starfield, three depth layers */
+  .stars{position:absolute;inset:-20%;will-change:transform}
+  .stars i{position:absolute;top:0;left:0;width:1px;height:1px;border-radius:50%;background:#fff}
+  .stars.near i{width:2px;height:2px}
+  .stars.far{opacity:.5}
+
+  @keyframes drift{
+    from{transform:translate3d(0,0,0)}
+    to{transform:translate3d(-2%,1.5%,0)}
+  }
+  .stars.far{animation:drift 180s linear infinite alternate}
+  .stars.mid{animation:drift 120s linear infinite alternate}
+  .stars.near{animation:drift 70s linear infinite alternate}
+
+  /* ---------- Gargantua ---------- */
+
+  #gargantua{
+    position:absolute;
+    top:50%;left:50%;
+    width:var(--bh);height:var(--bh);
+    transform:translate(-50%,-50%) scale(.82);
+    opacity:0;
+    transition:opacity 1600ms ease 200ms, transform 1800ms cubic-bezier(.22,1,.36,1) 150ms;
+  }
+  body.void #gargantua{opacity:1;transform:translate(-50%,-50%) scale(1)}
+
+  #gargantua > *{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)}
+
+  /* accretion disk, rear half sitting behind the sphere */
+  .disk{
+    width:280%;height:46%;
+    border-radius:50%;
+    background:
+      radial-gradient(ellipse at center,
+        transparent 0 34%,
+        rgba(255,241,214,.95) 40%,
+        rgba(255,186,92,.85)  47%,
+        rgba(236,128,36,.55)  60%,
+        rgba(142,62,14,.22)   78%,
+        transparent 100%);
+    filter:blur(6px);
+  }
+  .disk.front{
+    clip-path:inset(50% 0 0 0);
+    z-index:6;
+    filter:blur(5px) brightness(1.12);
+  }
+
+  /* faint strands in the disk, slowly rotating */
+  .disk.sheen{
+    width:280%;height:46%;
+    background:conic-gradient(from 0deg,
+      rgba(255,255,255,.00) 0deg,
+      rgba(255,255,255,.16) 40deg,
+      rgba(255,255,255,.00) 90deg,
+      rgba(255,255,255,.10) 170deg,
+      rgba(255,255,255,.00) 230deg,
+      rgba(255,255,255,.14) 300deg,
+      rgba(255,255,255,.00) 360deg);
+    mix-blend-mode:overlay;
+    filter:blur(10px);
+    animation:spin 42s linear infinite;
+  }
+  @keyframes spin{to{transform:translate(-50%,-50%) rotate(360deg)}}
+
+  /* Einstein ring, light bent around the sphere */
+  .ring{
+    width:132%;height:132%;
+    border-radius:50%;
+    background:radial-gradient(circle at center,
+      transparent 0 73%,
+      rgba(255,228,180,.30) 75%,
+      rgba(255,246,228,.98) 77.5%,
+      rgba(255,183,88,.55)  80%,
+      rgba(255,140,40,.12)  86%,
+      transparent 92%);
+    filter:blur(1.5px);
+    z-index:5;
+  }
+
+  /* the disk lensed vertically over and under the sphere */
+  .lens{
+    width:150%;height:150%;
+    border-radius:50%;
+    background:radial-gradient(ellipse 62% 86% at center,
+      transparent 0 62%,
+      rgba(255,205,130,.42) 66%,
+      rgba(255,232,196,.75) 69%,
+      rgba(238,146,48,.28)  74%,
+      transparent 82%);
+    filter:blur(7px);
+    z-index:4;
+  }
+
+  /* event horizon */
+  .hole{
+    width:100%;height:100%;
+    border-radius:50%;
+    background:#000;
+    z-index:7;
+    box-shadow:
+      0 0 0 1px rgba(255,214,150,.65),
+      0 0 26px 6px rgba(255,170,70,.30),
+      0 0 90px 30px rgba(255,140,40,.12);
+  }
+
+  /* overall glow, breathing */
+  .bloom{
+    width:420%;height:420%;
+    border-radius:50%;
+    background:radial-gradient(circle at center, rgba(255,160,60,.13), transparent 58%);
+    z-index:2;
+    animation:breathe 9s ease-in-out infinite;
+  }
+  @keyframes breathe{
+    0%,100%{opacity:.75}
+    50%{opacity:1}
+  }
+
+  /* ---------- hint ---------- */
+
+  .hint{
+    position:fixed;
+    left:50%;bottom:clamp(20px,5vh,56px);
+    transform:translateX(-50%);
+    z-index:20;
+    color:rgba(255,255,255,.34);
+    letter-spacing:.22em;
+    text-transform:uppercase;
+    font-size:11px;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity 900ms ease;
+    white-space:nowrap;
+  }
+  body.void .hint{opacity:1;animation:pulse 4.5s ease-in-out 1.6s infinite}
+  @keyframes pulse{0%,100%{opacity:.34}50%{opacity:.7}}
+
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation:none!important;transition-duration:220ms!important}
+  }
+</style>
+</head>
+<body>
+
+  <div id="space" aria-hidden="true">
+    <div class="stars far"></div>
+    <div class="stars mid"></div>
+    <div class="stars near"></div>
+
+    <div id="gargantua">
+      <div class="bloom"></div>
+      <div class="disk"></div>
+      <div class="lens"></div>
+      <div class="ring"></div>
+      <div class="hole"></div>
+      <div class="disk front"></div>
+      <div class="disk sheen"></div>
+    </div>
+  </div>
+
+  <button id="socket" aria-label="Socket">
+    <img src="socket.png" alt="Socket" width="600" height="598"/>
+  </button>
+
+  <p class="hint" aria-hidden="true">click anywhere</p>
+
+<script>
+(function(){
+  "use strict";
+
+  /* --- starfield --- */
+  var layers = [
+    {el: document.querySelector(".stars.far"),  n: 420, max: .55},
+    {el: document.querySelector(".stars.mid"),  n: 200, max: .85},
+    {el: document.querySelector(".stars.near"), n:  70, max: 1  }
+  ];
+
+  layers.forEach(function(layer){
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < layer.n; i++){
+      var s = document.createElement("i");
+      s.style.transform = "translate(" + (Math.random()*140).toFixed(3) + "vw," +
+                                         (Math.random()*140).toFixed(3) + "vh)";
+      s.style.opacity = (0.25 + Math.random() * layer.max).toFixed(2);
+      frag.appendChild(s);
+    }
+    layer.el.appendChild(frag);
+  });
+
+  /* --- toggling --- */
+  var body   = document.body;
+  var socket = document.getElementById("socket");
+
+  function open(e){                       // socket -> space
+    e.preventDefault();
+    e.stopPropagation();
+    body.classList.add("void");
+  }
+
+  function close(){                       // space -> socket
+    body.classList.remove("void");
+  }
+
+  socket.addEventListener("click", open);
+
+  document.addEventListener("click", function(){
+    if (body.classList.contains("void")) close();
+  });
+
+  document.addEventListener("keydown", function(e){
+    if (!body.classList.contains("void")) return;
+    if (e.key === "Escape" || e.key === "Enter" || e.key === " "){
+      e.preventDefault();
+      close();
+      socket.focus();
+    }
+  });
+
+  /* --- subtle parallax on mouse move --- */
+  var g = document.getElementById("gargantua");
+  var space = document.getElementById("space");
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  if (!reduce && window.matchMedia("(hover:hover)").matches){
+    var tx = 0, ty = 0, cx = 0, cy = 0, raf = null;
+
+    window.addEventListener("mousemove", function(ev){
+      tx = (ev.clientX / window.innerWidth  - .5);
+      ty = (ev.clientY / window.innerHeight - .5);
+      if (!raf) raf = requestAnimationFrame(tick);
+    });
+
+    function tick(){
+      cx += (tx - cx) * .05;
+      cy += (ty - cy) * .05;
+      space.style.transform = "translate3d(" + (cx * -26).toFixed(2) + "px," +
+                                               (cy * -26).toFixed(2) + "px,0)";
+      g.style.marginLeft = (cx * 16).toFixed(2) + "px";
+      g.style.marginTop  = (cy * 16).toFixed(2) + "px";
+      raf = (Math.abs(tx - cx) > .0005 || Math.abs(ty - cy) > .0005)
+          ? requestAnimationFrame(tick) : null;
+    }
+  }
+})();
+</script>
+</body>
+</html>
